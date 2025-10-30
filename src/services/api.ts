@@ -32,6 +32,20 @@ export interface SummaryData {
   avg_score: number;
 }
 
+export interface MonthlySummaryResponse {
+  overall: {
+    total_aftes: number;
+    underperformers: number;
+    avg_score: number;
+  };
+  details: Array<{
+    client: string;
+    category: string;
+    total_aftes: number;
+    avg_score: number;
+  }>;
+}
+
 export interface SummaryItem {
   client: string;
   category: string;
@@ -121,7 +135,7 @@ export async function fetchPerformanceData(filters?: PerformanceFilters): Promis
   }
 }
 
-export async function fetchMonthlySummary(filters?: { month?: string; year?: string }): Promise<SummaryData[]> {
+export async function fetchMonthlySummary(filters?: { month?: string; year?: string }): Promise<MonthlySummaryResponse> {
   try {
     const params = new URLSearchParams();
     if (filters?.month) params.append('month', filters.month);
