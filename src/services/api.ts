@@ -135,19 +135,22 @@ export async function fetchPerformanceData(filters?: PerformanceFilters): Promis
   }
 }
 
-export async function fetchMonthlySummary(filters?: { month?: string; year?: string }): Promise<MonthlySummaryResponse> {
+export async function fetchMonthlySummary(filters?: PerformanceFilters): Promise<MonthlySummaryResponse> {
   try {
     const params = new URLSearchParams();
     if (filters?.month) params.append('month', filters.month);
     if (filters?.year) params.append('year', filters.year);
-    
+    if (filters?.category) params.append('category', filters.category);
+    if (filters?.client) params.append('client', filters.client);
+    if (filters?.task) params.append('task', filters.task);
+
     const url = `${API_BASE_URL}/api/monthly-summary${params.toString() ? '?' + params.toString() : ''}`;
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const data = await response.json();
     return data;
   } catch (error) {

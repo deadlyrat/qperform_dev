@@ -78,24 +78,19 @@ export default function MonthlySummaryView({ currentFilters }: MonthlySummaryVie
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Use filters from props
-  const month = currentFilters?.month;
-  const year = currentFilters?.year;
-  // Note: client, category, task filters would need backend support
-
   useEffect(() => {
     loadData();
-  }, [month, year, currentFilters]);
+  }, [currentFilters]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      console.log('🔍 Fetching monthly summary with filters:', { month, year });
+      console.log('🔍 Fetching monthly summary with filters:', currentFilters);
 
-      // Fetch monthly summary data with filters
-      const summaryData = await fetchMonthlySummary({ month, year });
+      // Fetch monthly summary data with all filters
+      const summaryData = await fetchMonthlySummary(currentFilters);
       
       console.log('✅ Received data:', summaryData);
       
