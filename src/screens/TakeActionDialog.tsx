@@ -69,8 +69,8 @@ export default function TakeActionDialog({ isOpen, onDismiss, employees }: TakeA
             <div>
               <Label required>Select Employee</Label>
               <Dropdown placeholder="Select employee">
-                {/* FIX: Ensure employees is defined before calling map() */}
-                {employees && employees.map(emp => ( 
+                {/* Add optional chaining AND default to empty array */}
+                {(employees || []).map(emp => (
                   <Option key={emp.id} value={emp.id}>{emp.name}</Option>
                 ))}
               </Dropdown>

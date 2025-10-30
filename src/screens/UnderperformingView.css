@@ -1,54 +1,71 @@
 /* src/screens/performance/underperforming/UnderperformingView.css */
 
-.underperforming-container {
+.underperforming-view-container {
   display: flex;
   flex-direction: column;
+  padding: 24px;
   gap: 16px;
+  height: calc(100vh - 120px); /* Adjust based on your header height */
+  overflow: hidden; /* Changed: container should not scroll */
 }
 
-.filter-bar {
+.top-filters-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap; /* Allows filters to wrap on smaller screens */
   gap: 16px;
+  margin-bottom: 8px;
+  flex-shrink: 0; /* Prevent filters from shrinking */
 }
 
 .left-filters, .right-filters {
   display: flex;
-  gap: 16px;
   align-items: center;
+  gap: 16px;
 }
 
 .category-toggle {
-  margin-top: -8px; 
+    margin-bottom: 12px;
+    flex-shrink: 0; /* Prevent tabs from shrinking */
 }
 
-/* --- NEW CUSTOM GRID SYSTEM --- */
+/* --- GRID STRUCTURE --- */
+.performance-grid-container {
+    width: 100%;
+    flex: 1; /* Added: allows it to fill available space */
+    overflow-y: auto; /* Changed: scrolling happens HERE */
+    overflow-x: auto; 
+    padding-bottom: 8px;
+}
 
 .custom-grid-container {
-  /* This defines our grid. We'll specify the number of columns in the component. */
   display: grid;
-  /* This sets the space between our "cards" */
-  gap: 16px;
-  /* Ensure the grid aligns its items at the start (top) */
-  align-items: start;
+  /* Columns are defined dynamically in TS: Employee | Client/Task | Weeks... | Actions */
+  min-width: 1200px; /* Ensures space for all columns */
+  grid-auto-rows: minmax(80px, auto); /* Minimum row height */
 }
 
 .grid-header-row {
-  /* This makes the header row a subgrid that aligns with the main grid */
-  display: contents; 
+  display: contents; /* Allows child elements to act as grid items */
 }
 
 .grid-header-cell {
-  font-weight: 600;
+  background-color: #e8e8e8;
   color: #333;
-  padding: 0 8px 8px 8px; /* Padding for the header text */
-  text-align: left;
+  font-weight: 600;
+  padding: 12px 16px;
+  border: 1px solid #dcdcdc;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.9rem;
 }
 
 .grid-body-row {
-  /* Each data row is also a subgrid, ensuring perfect column alignment */
   display: contents;
 }
 
@@ -63,47 +80,62 @@
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
   height: 100%; /* Makes cards in the same row the same height */
   text-align: left;
+  align-items: flex-start;
+  justify-content: center;
+  font-size: 0.85rem;
 }
 
-/* Specific styling for the content inside the cards */
-
-.employee-cell-card {
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-}
-
-.week-cell-card .weekly-score {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #333;
-}
-
-.week-cell-card .action-taken-label {
-  font-size: 0.8rem;
-  color: #606060;
-  font-weight: bold;
-}
-
-.week-cell-card .action-taken-value {
-  font-weight: 600;
-}
-
-.monthly-results-card {
-  justify-content: space-between;
-}
-
-.monthly-results-card .result-item {
+/* --- NEW STYLES FOR WEEKLY PERFORMANCE CELL (SCORE + ACTION) --- */
+.weekly-performance-card {
+  /* Aligns Score and Action status vertically */
   display: flex;
   flex-direction: column;
+  justify-content: center; /* Center content vertically */
+  align-items: center; /* Center content horizontally */
+  gap: 4px;
+  padding: 12px; /* Slightly reduced padding */
 }
 
-.monthly-results-card .result-item span:first-child {
-  font-weight: 600;
+.weekly-score-value {
+  font-size: 1.1rem; /* Slightly larger score */
+  font-weight: 700;
+  color: #0078d4; /* Fluent Blue for score */
 }
 
-.monthly-results-card svg {
-  cursor: pointer;
-  color: #0078d4;
-  align-self: flex-end;
+.weekly-action-status {
+  font-size: 0.75rem; /* Smaller text for action status */
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.action-taken-yes {
+    background-color: #4CAF50; /* Green background */
+    color: white;
+}
+
+.action-taken-no {
+    background-color: #f0f0f0; /* Light grey background */
+    color: #606060;
+}
+
+/* --- COMPLIANCE FLAGS (Background Styling) --- */
+.flag-critical {
+  background-color: #ffeaea; /* Light red */
+  border-left: 5px solid #d13438;
+}
+
+.flag-low {
+  background-color: #fff9e6; /* Light yellow */
+  border-left: 5px solid #ffaa44;
+}
+
+.flag-compliant {
+  background-color: #f0fff0; /* Light green */
+  border-left: 5px solid #107c10;
+}
+
+/* Style for action column buttons */
+.grid-card button {
+  width: 100%;
 }
