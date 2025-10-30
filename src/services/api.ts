@@ -5,6 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 export interface PerformanceData {
   agent_email: string;
   agent_id: string;
+  agent_name?: string;
   position: string;
   office: string;
   client: string;
@@ -67,13 +68,31 @@ export interface PerformanceFilters {
   task?: string;
 }
 
-// --- New Type for Client Summary ---
 export interface ClientSummaryData {
   client: string;
   total_aftes: number;
   underperformers: number;
   weeks_with_issues: number;
   avg_score: number;
+}
+
+export interface AgentWarning {
+  agent_email: string;
+  warning_level: number;
+  issue_date: string;
+  expiration_date: string;
+}
+
+export interface AgentMonthlyResults {
+  compliantWeeks: number;
+  totalWeeks: number;
+  actionCount: number;
+}
+
+export interface Recommendation {
+  action: string;
+  isCritical: boolean;
+  notes: string;
 }
 
 // --- API Functions ---
@@ -123,9 +142,21 @@ export async function fetchMonthlySummary(filters?: { month?: string; year?: str
   }
 }
 
-export async function fetchFilters(): Promise<FilterOptions> {
+export async function fetchFilters(cascadingFilters?: { 
+  client?: string; 
+  category?: string;
+  month?: string;
+  year?: string;
+}): Promise<FilterOptions> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/filters`);
+    const params = new URLSearchParams();
+    if (cascadingFilters?.client) params.append('client', cascadingFilters.client);
+    if (cascadingFilters?.category) params.append('category', cascadingFilters.category);
+    if (cascadingFilters?.month) params.append('month', cascadingFilters.month);
+    if (cascadingFilters?.year) params.append('year', cascadingFilters.year);
+    
+    const url = `${API_BASE_URL}/api/filters${params.toString() ? '?' + params.toString() : ''}`;
+    const response = await fetch(url);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -177,8 +208,6 @@ export async function createAction(action: Omit<ActionLog, 'id'>): Promise<{ suc
   }
 }
 
-
-// NEW FUNCTION: Fetch aggregated data for the Client Category tab
 export async function fetchClientSummary(filters?: { month?: string; year?: string }): Promise<ClientSummaryData[]> {
     try {
         const params = new URLSearchParams();
@@ -200,11 +229,8 @@ export async function fetchClientSummary(filters?: { month?: string; year?: stri
     }
 }
 
-
-// NEW FUNCTION: Fetch active warnings for an agent
 export async function fetchAgentWarnings(agentEmail: string): Promise<AgentWarning[]> {
     try {
-        // We will call a dedicated API endpoint /api/warnings/agent-email
         const url = `${API_BASE_URL}/api/warnings/${agentEmail}`;
         const response = await fetch(url);
         
@@ -216,10 +242,9 @@ export async function fetchAgentWarnings(agentEmail: string): Promise<AgentWarni
         return data;
     } catch (error) {
         console.error(`Error fetching warnings for ${agentEmail}:`, error);
-        return []; // Return empty array on failure
+        return [];
     }
 }
-
 
 // --- Transformation Functions ---
 
@@ -251,12 +276,11 @@ export function calculateKPIs(data: SummaryData[]) {
   };
 }
 
-// Group performance data by week for underperforming view
 export function groupByWeek(data: PerformanceData[]) {
   const grouped = new Map<string, Map<string, PerformanceData[]>>();
   
   data.forEach(item => {
-    const key = `${item.agent_email}`; // Use email as the key
+    const key = `${item.agent_email}`;
     if (!grouped.has(key)) {
       grouped.set(key, new Map());
     }
@@ -271,35 +295,14 @@ export function groupByWeek(data: PerformanceData[]) {
   return grouped;
 }
 
-
-// --- New: Utility to calculate an agent's compliance and action metrics for the month ---
-
-// NOTE: This assumes 'ActionLog' data is available and contains enough context
-export interface AgentMonthlyResults {
-  compliantWeeks: number;
-  totalWeeks: number;
-  actionCount: number;
-}
-
-
-// --- New Type for Active Warnings ---
-export interface AgentWarning {
-  agent_email: string;
-  warning_level: number;
-  issue_date: string;
-  expiration_date: string;
-}
-
-
-/**
- * Calculates monthly compliance and action counts for a single agent.
- * Compliance rule: A week is compliant if ALL records within that week have flags other than 'Critical' or 'Low'.
- */
-export function calculateAgentMonthlyResults(agentWeeksData: Map<string, PerformanceData[]>, agentEmail: string, actionLog: ActionLog[] = []): AgentMonthlyResults {
+export function calculateAgentMonthlyResults(
+  agentWeeksData: Map<string, PerformanceData[]>, 
+  agentEmail: string, 
+  actionLog: ActionLog[] = []
+): AgentMonthlyResults {
   let compliantWeeks = 0;
   const totalWeeks = agentWeeksData.size;
 
-  // 1. Calculate Compliant Weeks
   agentWeeksData.forEach(recordsInWeek => {
     const isCompliant = !recordsInWeek.some(
       d => d.flag_qa === 'Critical' || d.flag_qa === 'Low' || d.flag_prod === 'Critical' || d.flag_prod === 'Low'
@@ -309,7 +312,6 @@ export function calculateAgentMonthlyResults(agentWeeksData: Map<string, Perform
     }
   });
 
-  // 2. Count Actions Taken
   const actionCount = actionLog.filter(action => action.agent_email === agentEmail).length;
 
   return {
@@ -319,22 +321,9 @@ export function calculateAgentMonthlyResults(agentWeeksData: Map<string, Perform
   };
 }
 
-// --- New: Automated Recommendations Logic (Mocking Cases A-E) ---
-
-export interface Recommendation {
-  action: string;
-  isCritical: boolean;
-  notes: string;
-}
-
-/**
- * Generates an automated recommendation based on an agent's monthly results.
- * This mocks the "Cases A-E" logic required by the timeline.
- */
 export function generateRecommendation(results: AgentMonthlyResults): Recommendation {
   const nonCompliantWeeks = results.totalWeeks - results.compliantWeeks;
 
-  // Case A: Perfect Performance
   if (nonCompliantWeeks === 0) {
     return {
       action: "No Action Required",
@@ -343,7 +332,6 @@ export function generateRecommendation(results: AgentMonthlyResults): Recommenda
     };
   }
   
-  // Case B: Minor issues, low actions (Coaching/Monitoring)
   if (nonCompliantWeeks === 1 && results.actionCount < 1) {
     return {
       action: "Level 1: Focused Coaching",
@@ -352,7 +340,6 @@ export function generateRecommendation(results: AgentMonthlyResults): Recommenda
     };
   }
 
-  // Case C: Recurring issues, first warning needed
   if (nonCompliantWeeks >= 2 && results.actionCount < 1) {
     return {
       action: "Level 2: Written Warning Required",
@@ -361,7 +348,6 @@ export function generateRecommendation(results: AgentMonthlyResults): Recommenda
     };
   }
 
-  // Case D: Pattern of non-compliance despite warnings (Final Warning)
   if (nonCompliantWeeks >= 2 && results.actionCount >= 1) {
     return {
       action: "Level 3: Final Warning / Escalation",
@@ -370,7 +356,6 @@ export function generateRecommendation(results: AgentMonthlyResults): Recommenda
     };
   }
 
-  // Fallback (Case E: Other/Unknown)
   return {
     action: "Review Required",
     isCritical: true,

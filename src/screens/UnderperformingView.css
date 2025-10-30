@@ -1,4 +1,4 @@
-/* src/screens/performance/underperforming/UnderperformingView.css */
+/* src/screens/UnderperformingView.css */
 
 .underperforming-view-container {
   display: flex;
@@ -6,7 +6,7 @@
   padding: 24px;
   gap: 16px;
   height: calc(100vh - 120px); /* Adjust based on your header height */
-  overflow: hidden; /* Changed: container should not scroll */
+  overflow: visible; /* FIXED: Changed from 'hidden' to 'visible' to allow scrolling */
 }
 
 .top-filters-row {
@@ -32,16 +32,16 @@
 /* --- GRID STRUCTURE --- */
 .performance-grid-container {
     width: 100%;
-    flex: 1; /* Added: allows it to fill available space */
-    overflow-y: auto; /* Changed: scrolling happens HERE */
-    overflow-x: auto; 
+    flex: 1; /* Allows it to fill available space */
+    overflow-y: auto; /* Vertical scrolling for rows */
+    overflow-x: auto; /* Horizontal scrolling for columns */
     padding-bottom: 8px;
 }
 
 .custom-grid-container {
   display: grid;
   /* Columns are defined dynamically in TS: Employee | Client/Task | Weeks... | Actions */
-  min-width: 1200px; /* Ensures space for all columns */
+  min-width: fit-content; /* FIXED: Changed from fixed 1200px to fit-content */
   grid-auto-rows: minmax(80px, auto); /* Minimum row height */
 }
 
@@ -119,7 +119,43 @@
     color: #606060;
 }
 
-/* --- COMPLIANCE FLAGS (Background Styling) --- */
+/* --- FLAG BADGES (for score display) --- */
+.flag-badge {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  display: inline-block;
+  min-width: 60px;
+}
+
+.badge-great {
+  background-color: #107c10;
+  color: white;
+}
+
+.badge-good {
+  background-color: #92c353;
+  color: white;
+}
+
+.badge-normal {
+  background-color: #8a8886;
+  color: white;
+}
+
+.badge-low {
+  background-color: #ffaa44;
+  color: white;
+}
+
+.badge-critical {
+  background-color: #d13438;
+  color: white;
+}
+
+/* --- COMPLIANCE FLAGS (Background Styling for cards) --- */
 .flag-critical {
   background-color: #ffeaea; /* Light red */
   border-left: 5px solid #d13438;

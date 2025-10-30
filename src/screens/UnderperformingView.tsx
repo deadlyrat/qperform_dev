@@ -1,4 +1,4 @@
-// src/screens/performance/underperforming/UnderperformingView.tsx
+// src/screens/UnderperformingView.tsx
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
@@ -12,7 +12,7 @@ import {
   Dropdown,
   Option,
 } from '@fluentui/react-components';
-import { CalendarMonth24Regular, Comment24Regular } from '@fluentui/react-icons';
+import { CalendarMonth24Regular, Comment24Regular, BuildingMultiple24Regular, CommentAdd24Regular } from '@fluentui/react-icons';
 import './UnderperformingView.css';
 import TakeActionDialog from './TakeActionDialog';
 import FilterPopover from '../components/ui/FilterPopover';
@@ -98,8 +98,8 @@ export default function UnderperformingView() {
 
         // Get current date info
         const now = new Date();
-        const currentMonthName = now.toLocaleString('en-US', { month: 'long' }); // e.g., "October"
-        const currentYear = now.getFullYear(); // e.g., 2025
+        const currentMonthName = now.toLocaleString('en-US', { month: 'long' });
+        const currentYear = now.getFullYear();
 
         console.log('🔍 Auto-loading current month/year...');
         console.log('Current date:', now.toISOString());
@@ -108,17 +108,14 @@ export default function UnderperformingView() {
         console.log('Available months from DB:', options.months);
         console.log('Available years from DB:', options.years);
 
-        // Find current month in database (trim spaces and case-insensitive match)
         const monthToUse = options.months.find(m => 
           m.trim().toLowerCase() === currentMonthName.toLowerCase()
         );
         
-        // Find current year in database
         const yearToUse = options.years.includes(currentYear)
           ? currentYear
           : options.years[0];
 
-        // Use found values or fallback to most recent data
         const finalMonth = monthToUse || options.months[options.months.length - 1];
         const finalYear = String(yearToUse);
 
@@ -144,7 +141,6 @@ export default function UnderperformingView() {
 
   // Combined data fetching function
   const loadData = useCallback(async (currentFilters: PerformanceFilters) => {
-    // Only proceed if month/year are set (i.e., initial filter fetch is complete)
     if (!currentFilters.month || !currentFilters.year) {
         setLoading(false);
         return;
@@ -154,7 +150,6 @@ export default function UnderperformingView() {
       setLoading(true);
       setError(null);
 
-      // Fetch all three data sets concurrently
       const [performanceData, logData, clientData] = await Promise.all([
           fetchPerformanceData(currentFilters),
           fetchActionLog(),
@@ -176,14 +171,12 @@ export default function UnderperformingView() {
     }
   }, []);
 
-  // Effect to reload data whenever filters change
   useEffect(() => {
     if (filters.month && filters.year) {
         loadData(filters);
     }
   }, [filters, loadData]);
 
-  // --- Employee List for TakeActionDialog ---
   const employeeList = useMemo(() =>
     Array.from(groupedData.keys()).map(key => {
         const weeksMap = groupedData.get(key);
@@ -221,132 +214,194 @@ export default function UnderperformingView() {
 
   // --- RENDER HELPERS ---
 
-  const getFlagClass = (flag: string) => {
-    switch (flag) {
-      case 'Critical':
-        return 'flag-critical';
-      case 'Low':
-        return 'flag-low';
-      case 'Compliant':
-        return 'flag-compliant';
-      default:
-        return 'flag-default';
+  const getFlagBadgeClass = (flag: string | undefined) => {
+    if (!flag) return '';
+    switch (flag.toLowerCase()) {
+        case 'great': return 'badge-great';
+        case 'good': return 'badge-good';
+        case 'normal': return 'badge-normal';
+        case 'low': return 'badge-low';
+        case 'critical': return 'badge-critical';
+        default: return '';
     }
   };
 
-  // Renders the main grid view grouped by employee
+  // Renders the entire employee grid with weeks as columns
   const renderEmployeeGrid = () => {
     if (loading && groupedData.size === 0) {
       return (
         <div style={{ padding: '40px', textAlign: 'center' }}>
-          <Spinner size="large" label="Loading initial data..." />
+          <Spinner size="large" label="Loading data..." />
         </div>
       );
     }
-
     if (error) {
       return <div style={{ padding: '20px', textAlign: 'center', color: 'red' }}>Error: {error}</div>;
     }
-
     if (groupedData.size === 0) {
-      return <div style={{ padding: '20px', textAlign: 'center' }}>No employee performance data found for the selected filters.</div>;
+      return <div style={{ padding: '20px', textAlign: 'center' }}>No performance data found for the selected filters.</div>;
     }
-    
-    const weeks = Array.from(groupedData.values()).flatMap(m => Array.from(m.keys())).sort();
-    const uniqueWeeks = [...new Set(weeks)];
-    
-    const headers = ["Employee", "Client/Task", ...uniqueWeeks.map(w => `Wk: ${w}`), "Monthly Results"];
-    const gridColumnsStyle = { 
-        gridTemplateColumns: `1.5fr 1.5fr repeat(${uniqueWeeks.length}, 1fr) 1.5fr`
-    };
+
+    const allWeeksSet = new Set<string>();
+    groupedData.forEach(weeksMap => {
+      weeksMap.forEach((_, weekRange) => allWeeksSet.add(weekRange));
+    });
+
+    const uniqueWeeks = Array.from(allWeeksSet).sort((a, b) => {
+      const weekA = rawData.find(d => d.week_range === a);
+      const weekB = rawData.find(d => d.week_range === b);
+      if (!weekA || !weekB) return 0;
+      return new Date(weekA.start_date).getTime() - new Date(weekB.start_date).getTime();
+    });
+
+    const weekHeaders = uniqueWeeks.map((weekRange, i) => {
+        const weekData = rawData.find(d => d.week_range === weekRange);
+        const weekLabel = `Week ${i + 1}`;
+        return { label: weekLabel, weekRange, startDate: weekData?.start_date };
+    });
+
+    const totalColumns = weekHeaders.length + 2;
+    const gridColumnsStyle = { gridTemplateColumns: `200px repeat(${weekHeaders.length}, minmax(180px, 1fr)) 200px` };
 
     return (
-      <div className="performance-grid-container">
+      <div className="performance-grid-container" style={{ overflowX: 'auto', width: '100%' }}>
         <div className="custom-grid-container" style={gridColumnsStyle}>
           <div className="grid-header-row">
-            {headers.map(header => <div key={header} className="grid-header-cell">{header}</div>)}
+            <div className="grid-header-cell">Employee List</div>
+            {weekHeaders.map((w, i) => (
+              <div key={`week-header-${i}`} className="grid-header-cell">
+                <div>
+                  <div style={{ fontWeight: 600 }}>{w.label}</div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>{w.weekRange}</div>
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '8px', 
+                    marginTop: '8px',
+                    paddingTop: '8px',
+                    borderTop: '1px solid #e0e0e0'
+                  }}>
+                    <div style={{ flex: 1, fontSize: '0.7rem', fontWeight: 600 }}>Weekly Score</div>
+                    <div style={{ 
+                      width: '1px', 
+                      backgroundColor: '#e0e0e0',
+                      margin: '0 4px'
+                    }}></div>
+                    <div style={{ flex: 1, fontSize: '0.7rem', fontWeight: 600 }}>Action Taken</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div className="grid-header-cell">Monthly Results</div>
           </div>
-          {Array.from(groupedData.entries()).map(([agentEmail, weeksMap]) => {
-            const firstEntry = weeksMap.values().next().value[0] as PerformanceData;
-            const agentName = firstEntry?.agent_name || agentEmail;
-            const clientTask = `${firstEntry?.client || 'N/A'} / ${firstEntry?.task || 'N/A'}`;
-            
-            const agentActions = actionLogData.filter(a => a.agent_email === agentEmail);
+
+          {Array.from(groupedData.keys()).map(agentKey => {
+            const weeksMap = groupedData.get(agentKey);
+            if (!weeksMap || weeksMap.size === 0) return null;
+
+            const firstWeekData = Array.from(weeksMap.values())[0];
+            const firstRecord = firstWeekData?.[0];
+
+            const agentName = firstRecord?.agent_name || firstRecord?.agent_email.split('@')[0] || 'Unknown Agent';
+            const agentEmail = firstRecord?.agent_email || agentKey;
+
+            const agentActions = actionLogData.filter(log => log.agent_email === agentEmail);
 
             return (
-              <div key={agentEmail} className="grid-body-row">
-                {/* Employee Column */}
-                <div className="grid-card">
-                  <Avatar name={agentName} size={24} style={{ marginRight: '8px' }} />
-                  <strong>{agentName}</strong>
-                  <span style={{ fontSize: '0.8em', color: '#666' }}>{agentEmail}</span>
-                </div>
-                
-                {/* Client/Task Column */}
-                <div className="grid-card">
-                    {clientTask}
+              <div key={agentKey} className="grid-body-row">
+                <div className="grid-card" style={{ gap: '8px' }}>
+                  <Avatar name={agentName} size={32} />
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600 }}>{agentName}</span>
+                    <span style={{ fontSize: '0.75rem', color: '#666' }}>{agentEmail}</span>
+                  </div>
                 </div>
 
-                {/* Weekly Performance Columns */}
-                {uniqueWeeks.map(week => {
-                  const weekData = weeksMap.get(week);
-                  
-                  let flag = weekData ? weekData[0].flag_qa || weekData[0].flag_prod : 'N/A';
-                  let score = weekData && weekData[0].kpi_qa !== null ? weekData[0].kpi_qa : null;
-                  let scorePercent = score !== null ? (score * 100).toFixed(1) + '%' : 'N/A';
-
-                  if (weekData && weekData.some(d => d.flag_qa === 'Critical' || d.flag_prod === 'Critical')) {
-                      flag = 'Critical';
-                  } else if (weekData && weekData.some(d => d.flag_qa === 'Low' || d.flag_prod === 'Low')) {
-                      flag = 'Low';
-                  } else if (weekData && weekData.some(d => d.flag_qa === 'Compliant' && d.flag_prod === 'Compliant')) {
-                      flag = 'Compliant';
+                {weekHeaders.map((weekInfo) => {
+                  const weekData = weeksMap.get(weekInfo.weekRange);
+                  if (!weekData || weekData.length === 0) {
+                    return (
+                      <div key={`${agentKey}-${weekInfo.weekRange}`} className="grid-card">
+                        <span style={{ fontSize: '0.8rem', color: '#999' }}>No Data</span>
+                      </div>
+                    );
                   }
+
+                  const firstRecord = weekData[0];
                   
-                  const actionTakenThisWeek = agentActions.some(action => {
+                  // Calculate weekly score as percentage
+                  const weeklyScorePercent = Math.round(firstRecord.kpi_qa * 100);
+                  
+                  const weekStartDate = new Date(firstRecord.start_date);
+                  const weekEndDate = new Date(weekStartDate.getTime() + (7 * 24 * 60 * 60 * 1000));
+                  
+                  const weekActions = agentActions.filter(action => {
                     const actionDate = new Date(action.action_date);
-                    const weekStartDate = weekData ? new Date(weekData[0].start_date) : null;
-                    
-                    if (weekStartDate) {
-                        const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
-                        return actionDate.getTime() >= weekStartDate.getTime() && 
-                               actionDate.getTime() < (weekStartDate.getTime() + sevenDaysInMs);
-                    }
-                    return false;
+                    return actionDate >= weekStartDate && actionDate < weekEndDate;
                   });
                   
-                  const actionStatusText = actionTakenThisWeek ? 'Action Taken' : 'No Action';
-                  const actionStatusClass = actionTakenThisWeek ? 'action-taken-yes' : 'action-taken-no';
+                  const actionCount = weekActions.length;
+                  const actionStatusText = actionCount > 0 
+                    ? `${actionCount} Action${actionCount > 1 ? 's' : ''}`
+                    : 'No Action';
+
+                  // Determine score color based on flag
+                  const scoreBadgeClass = getFlagBadgeClass(firstRecord.flag_qa);
 
                   return (
-                    <div 
-                      key={week} 
-                      className={`grid-card weekly-performance-card ${getFlagClass(flag)}`}
-                      title={`Compliance: ${flag}`}
-                    >
-                      <span className="weekly-score-value">
-                          {scorePercent}
-                      </span>
-                      <span className={`weekly-action-status ${actionStatusClass}`}>
-                          {actionStatusText}
-                      </span>
+                    <div key={`${agentKey}-${weekInfo.weekRange}`} className="grid-card">
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%'
+                      }}>
+                        {/* Weekly Score Side - Show Percentage */}
+                        <div style={{ 
+                          flex: 1, 
+                          display: 'flex', 
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}>
+                          <span className={`flag-badge ${scoreBadgeClass}`} style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                            {weeklyScorePercent}%
+                          </span>
+                        </div>
+
+                        {/* Vertical Divider */}
+                        <div style={{ 
+                          width: '1px', 
+                          height: '40px',
+                          backgroundColor: '#e0e0e0'
+                        }}></div>
+
+                        {/* Action Taken Side */}
+                        <div style={{ 
+                          flex: 1, 
+                          display: 'flex', 
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}>
+                          <span style={{ 
+                            fontSize: '0.75rem', 
+                            fontWeight: 600,
+                            color: actionCount > 0 ? '#2e7d32' : '#f57c00'
+                          }}>
+                            {actionStatusText}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
 
-                {/* Monthly Results Column */}
                 <div className="grid-card" style={{ gap: '12px' }}>
-                  {/* Calculate monthly results */}
                   {(() => {
                     const totalWeeks = uniqueWeeks.length;
                     
-                    // Count compliant weeks (Great, Good, or Normal for BOTH QA and Prod)
                     const compliantWeeks = uniqueWeeks.filter(week => {
                       const weekData = weeksMap.get(week);
                       if (!weekData || weekData.length === 0) return false;
                       
-                      // A week is compliant if flags are NOT 'Low' or 'Critical'
-                      // i.e., flags are 'Great', 'Good', or 'Normal'
                       return weekData.some(d => {
                         const qaOk = d.flag_qa === 'Great' || d.flag_qa === 'Good' || d.flag_qa === 'Normal';
                         const prodOk = d.flag_prod === 'Great' || d.flag_prod === 'Good' || d.flag_prod === 'Normal';
@@ -354,7 +409,6 @@ export default function UnderperformingView() {
                       });
                     }).length;
                     
-                    // Count weeks where action was taken
                     const weeksWithAction = uniqueWeeks.filter(week => {
                       const weekData = weeksMap.get(week);
                       if (!weekData || weekData.length === 0) return false;
@@ -397,47 +451,196 @@ export default function UnderperformingView() {
     );
   };
   
-  // Renders the Client Category summary grid
+  // Renders the Client Category grid with weekly breakdown
   const renderClientGrid = () => {
-      if (loading && clientSummaryData.length === 0) {
-          return (
-              <div style={{ padding: '40px', textAlign: 'center' }}>
-                  <Spinner size="large" label="Loading client data..." />
-              </div>
-          );
-      }
-      
-      if (error) {
-          return <div style={{ padding: '20px', textAlign: 'center', color: 'red' }}>Error: {error}</div>;
-      }
-      
-      if (clientSummaryData.length === 0) {
-          return <div style={{padding: '20px', textAlign: 'center'}}>No client summary data found for the selected filters.</div>;
-      }
-      
-      const headers = ["Client Name", "Total AFTEs", "Underperformers", "Weeks with Issues", "Avg. QA Score"];
-      const gridColumnsStyle = { gridTemplateColumns: `1.5fr repeat(${headers.length - 1}, 1fr)` };
-
+    if (loading && clientSummaryData.length === 0) {
       return (
-        <div className="performance-grid-container">
-          <div className="custom-grid-container" style={gridColumnsStyle}>
-            <div className="grid-header-row">
-              {headers.map(header => <div key={header} className="grid-header-cell">{header}</div>)}
-            </div>
-            {clientSummaryData.map(item => (
-              <div key={item.client} className="grid-body-row">
-                <div className="grid-card">
-                    <strong>{item.client}</strong>
-                </div>
-                <div className="grid-card">{item.total_aftes}</div>
-                <div className="grid-card">{item.underperformers}</div>
-                <div className="grid-card">{item.weeks_with_issues}</div>
-                <div className="grid-card">{item.avg_score}%</div>
-              </div>
-            ))}
-          </div>
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <Spinner size="large" label="Loading client data..." />
         </div>
       );
+    }
+    
+    if (error) {
+      return <div style={{ padding: '20px', textAlign: 'center', color: 'red' }}>Error: {error}</div>;
+    }
+    
+    if (clientSummaryData.length === 0) {
+      return <div style={{padding: '20px', textAlign: 'center'}}>No client summary data found for the selected filters.</div>;
+    }
+
+    // Get all unique weeks from the performance data
+    const allWeeksSet = new Set<string>();
+    rawData.forEach(record => allWeeksSet.add(record.week_range));
+    
+    const uniqueWeeks = Array.from(allWeeksSet).sort((a, b) => {
+      const weekA = rawData.find(d => d.week_range === a);
+      const weekB = rawData.find(d => d.week_range === b);
+      if (!weekA || !weekB) return 0;
+      return new Date(weekA.start_date).getTime() - new Date(weekB.start_date).getTime();
+    });
+
+    const weekHeaders = uniqueWeeks.map((weekRange, i) => {
+      const weekData = rawData.find(d => d.week_range === weekRange);
+      return { 
+        label: `Week ${i + 1}`, 
+        weekRange, 
+        startDate: weekData?.start_date 
+      };
+    });
+
+    // Group data by client and week
+    const clientWeekData = new Map<string, Map<string, PerformanceData[]>>();
+    
+    rawData.forEach(record => {
+      if (!clientWeekData.has(record.client)) {
+        clientWeekData.set(record.client, new Map());
+      }
+      const clientWeeks = clientWeekData.get(record.client)!;
+      
+      if (!clientWeeks.has(record.week_range)) {
+        clientWeeks.set(record.week_range, []);
+      }
+      clientWeeks.get(record.week_range)!.push(record);
+    });
+
+    const gridColumnsStyle = { 
+      gridTemplateColumns: `200px repeat(${weekHeaders.length}, minmax(180px, 1fr)) 220px` 
+    };
+
+    return (
+      <div className="performance-grid-container" style={{ overflowX: 'auto', width: '100%' }}>
+        <div className="custom-grid-container" style={gridColumnsStyle}>
+          {/* Header Row */}
+          <div className="grid-header-row">
+            <div className="grid-header-cell">Client Name</div>
+            {weekHeaders.map((w, i) => (
+              <div key={`week-header-${i}`} className="grid-header-cell">
+                <div>
+                  <div>{w.label}</div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>{w.weekRange}</div>
+                </div>
+              </div>
+            ))}
+            <div className="grid-header-cell">Monthly Results</div>
+          </div>
+
+          {/* Client Rows */}
+          {Array.from(clientWeekData.keys()).sort().map(clientName => {
+            const clientWeeks = clientWeekData.get(clientName)!;
+            const clientSummary = clientSummaryData.find(s => s.client === clientName);
+
+            return (
+              <div key={clientName} className="grid-body-row">
+                {/* Client Name Column */}
+                <div className="grid-card" style={{ gap: '8px' }}>
+                  <Avatar
+                    icon={<BuildingMultiple24Regular />}
+                    color="colorful"
+                    size={32}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600 }}>{clientName}</span>
+                  </div>
+                </div>
+
+                {/* Week Columns */}
+                {weekHeaders.map((weekInfo) => {
+                  const weekData = clientWeeks.get(weekInfo.weekRange);
+                  
+                  if (!weekData || weekData.length === 0) {
+                    return (
+                      <div key={`${clientName}-${weekInfo.weekRange}`} className="grid-card">
+                        <span style={{ fontSize: '0.8rem', color: '#999' }}>No Data</span>
+                      </div>
+                    );
+                  }
+
+                  // Calculate weekly stats
+                  const uniqueAgents = new Set(weekData.map(r => r.agent_id));
+                  const totalAFTEs = uniqueAgents.size;
+
+                  const underperformingAgents = new Set(
+                    weekData
+                      .filter(r => r.flag_qa === 'Critical' || r.flag_qa === 'Low' || 
+                                  r.flag_prod === 'Critical' || r.flag_prod === 'Low')
+                      .map(r => r.agent_id)
+                  );
+                  const underperformers = underperformingAgents.size;
+
+                  const avgScore = Math.round(
+                    (weekData.reduce((sum, r) => sum + r.kpi_qa, 0) / weekData.length) * 100
+                  );
+
+                  // Get actions for this week and client
+                  const weekStartDate = new Date(weekData[0].start_date);
+                  const weekEndDate = new Date(weekStartDate.getTime() + (7 * 24 * 60 * 60 * 1000));
+                  
+                  const weekActions = actionLogData.filter(action => {
+                    const actionDate = new Date(action.action_date);
+                    return action.client === clientName && 
+                           actionDate >= weekStartDate && 
+                           actionDate < weekEndDate;
+                  });
+                  const actionsCount = weekActions.length;
+
+                  const scoreBadgeClass = avgScore >= 95 ? 'badge-great' : 
+                                         avgScore >= 85 ? 'badge-good' : 
+                                         avgScore >= 75 ? 'badge-normal' : 'badge-low';
+
+                  return (
+                    <div key={`${clientName}-${weekInfo.weekRange}`} className="grid-card">
+                      <span style={{ fontSize: '0.75rem' }}>AFTEs: {totalAFTEs}</span>
+                      <span style={{ fontSize: '0.75rem', color: underperformers > 0 ? '#d13438' : undefined }}>
+                        Underperformers: {underperformers}
+                      </span>
+                      <span style={{ fontSize: '0.75rem' }}>
+                        Actions: {actionsCount}
+                      </span>
+                      <span className={`flag-badge ${scoreBadgeClass}`} style={{ fontSize: '0.75rem' }}>
+                        Score: {avgScore}%
+                      </span>
+                    </div>
+                  );
+                })}
+
+                {/* Monthly Results Column */}
+                <div className="grid-card" style={{ gap: '12px' }}>
+                  {clientSummary ? (
+                    <>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                          Total AFTEs: {clientSummary.total_aftes}
+                        </span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#d13438' }}>
+                          Underperformers: {clientSummary.underperformers}
+                        </span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                          Weeks w/ Issues: {clientSummary.weeks_with_issues}
+                        </span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                          Monthly Score: {clientSummary.avg_score}%
+                        </span>
+                      </div>
+                      <Button 
+                        size="small" 
+                        appearance="subtle"
+                        icon={<CommentAdd24Regular />}
+                        title="Add Note for Client"
+                      >
+                        Add Note
+                      </Button>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: '0.85rem', color: '#999' }}>No summary data</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
 
@@ -461,7 +664,6 @@ export default function UnderperformingView() {
       />
 
       <div className="top-filters-row">
-        {/* Left Filters: Dropdowns */}
         <div className="left-filters">
             <FilterPopover 
                 filterOptions={filterOptions}
@@ -469,7 +671,6 @@ export default function UnderperformingView() {
                 setFilters={setFilters}
             />
             
-            {/* Month Filter */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <CalendarMonth24Regular />
                 <Dropdown 
@@ -489,7 +690,6 @@ export default function UnderperformingView() {
                 </Dropdown>
             </div>
 
-            {/* Year Filter */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <Dropdown 
                     placeholder="Select Year"
@@ -509,7 +709,6 @@ export default function UnderperformingView() {
             </div>
         </div>
 
-        {/* Right Filters: Take Action Button */}
         <div className="right-filters">
             {canTakeAction ? (
                 <Button appearance="primary" onClick={() => setIsTakeActionOpen(true)}>
@@ -537,10 +736,8 @@ export default function UnderperformingView() {
         </TabList>
       </div>
 
-      {/* Conditionally render the correct grid based on the viewMode state */}
       {viewMode === 'employee' ? renderEmployeeGrid() : renderClientGrid()}
 
-      {/* Show loading spinner while filtering/re-fetching */}
       {loading && (groupedData.size > 0 || clientSummaryData.length > 0) &&
         <div style={{ padding: '20px', textAlign: 'center' }}>
             <Spinner size="small" label="Updating data..." />
