@@ -69,7 +69,8 @@ export default function TakeActionDialog({ isOpen, onDismiss, employees }: TakeA
             <div>
               <Label required>Select Employee</Label>
               <Dropdown placeholder="Select employee">
-                {employees.map(emp => (
+                {/* FIX: Ensure employees is defined before calling map() */}
+                {employees && employees.map(emp => ( 
                   <Option key={emp.id} value={emp.id}>{emp.name}</Option>
                 ))}
               </Dropdown>
