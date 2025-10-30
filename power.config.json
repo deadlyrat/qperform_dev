@@ -1,0 +1,12 @@
+{
+  "appId": "1aca74d1-2373-46d7-9622-93cbaf49fc32",
+  "appDisplayName": "QPerform",
+  "description": null,
+  "environmentId": "3a7af3e9-f4bf-e436-b690-1541b2005714",
+  "buildPath": "./dist",
+  "buildEntryPoint": "index.html",
+  "logoPath": "Default",
+  "localAppUrl": "http://localhost:3000/",
+  "connectionReferences": {},
+  "databaseReferences": {}
+}

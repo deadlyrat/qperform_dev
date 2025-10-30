@@ -1,0 +1,48 @@
+/* src/components/ui/OrientationLock.css */
+
+.orientation-lock-overlay {
+  /* It is hidden by default in landscape mode, which is the desired state. */
+  display: none;
+  
+  /* Positioning rules to make it cover the entire screen */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  
+  /* A very high z-index ensures it renders on top of all other app content */
+  z-index: 9999;
+  
+  /* Visual styling */
+  background-color: #ffffff;
+  color: #333333;
+
+  /* Flexbox rules to perfectly center the content within the overlay */
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.orientation-lock-content {
+  padding: 20px;
+}
+
+.orientation-lock-icon {
+  /* Makes the icon large and easy to see */
+  font-size: 64px;
+  margin-bottom: 24px;
+  color: #005a9e; /* A professional blue color to match the theme */
+}
+
+/* 
+  THIS IS THE CRITICAL LOGIC FOR THE COMPONENT:
+  This CSS media query activates ONLY when the device's height is greater than 
+  its width (i.e., it is in portrait mode). When active, it overrides the 'display'
+  property, making the overlay visible.
+*/
+@media (orientation: portrait) {
+  .orientation-lock-overlay {
+    display: flex;
+  }
+}

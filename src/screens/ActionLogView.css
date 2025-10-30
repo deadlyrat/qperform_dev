@@ -1,0 +1,49 @@
+/* src/screens/performance/action_log/ActionLogView.css */
+
+.action-log-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.action-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.action-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.action-log-card {
+  padding: 24px;
+}
+
+.card-main-header {
+  margin-bottom: 8px;
+}
+
+.action-type {
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.employee-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.action-details {
+  color: #606060;
+  margin: 8px 0;
+}
+
+.card-footer {
+  display: flex;
+  gap: 8px;
+  color: #888;
+  font-size: 0.9rem;
+}

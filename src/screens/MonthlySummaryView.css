@@ -1,0 +1,40 @@
+/* src/screens/performance/monthly_summary/MonthlySummaryView.css */
+
+.summary-view-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.kpi-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+}
+
+.kpi-card {
+  padding: 16px;
+}
+
+.card-title {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-weight: 600;
+  color: #4a4a4a;
+}
+
+.kpi-value {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+.kpi-description {
+  color: #606060;
+  font-size: 0.9rem;
+}
+
+.data-grid-card {
+  padding: 24px;
+}
