@@ -11,6 +11,7 @@ import {
   Spinner,
   Dropdown,
   Option,
+  Card,
 } from '@fluentui/react-components';
 import { CalendarMonth24Regular, Comment24Regular, BuildingMultiple24Regular, CommentAdd24Regular } from '@fluentui/react-icons';
 import './UnderperformingView.css';
@@ -47,13 +48,19 @@ interface DialogState {
     recommendation: Recommendation;
 }
 
-export default function UnderperformingView() {
+interface UnderperformingViewProps {
+  currentFilters?: PerformanceFilters;
+  onFiltersChange?: (filters: PerformanceFilters) => void;
+}
+
+export default function UnderperformingView({ currentFilters, onFiltersChange }: UnderperformingViewProps) {
   const { role } = useUserRole();
-  
+
   // Controls permissions for "Take Action"
   const canTakeAction = role === 'Director' || role === 'AVP';
 
   // --- STATE DECLARATIONS ---
+  // Start with loading true - will be set to false once data is loaded or if no filters exist
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rawData, setRawData] = useState<PerformanceData[]>([]);
@@ -67,7 +74,7 @@ export default function UnderperformingView() {
     categories: [],
     tasks: [],
   });
-  const [filters, setFilters] = useState<PerformanceFilters>({});
+  const [filters, setFilters] = useState<PerformanceFilters>(currentFilters || {});
   
   // Dialog States
   const [isTakeActionOpen, setIsTakeActionOpen] = useState(false);
@@ -96,40 +103,47 @@ export default function UnderperformingView() {
         const options = await fetchFilters();
         setFilterOptions(options);
 
-        // Get current date info
-        const now = new Date();
-        const currentMonthName = now.toLocaleString('en-US', { month: 'long' });
-        const currentYear = now.getFullYear();
+        // Only auto-select current month/year if no filters are already set
+        // (i.e., when coming from welcome screen, not when switching tabs)
+        const hasExistingFilters = currentFilters && (currentFilters.month || currentFilters.year);
 
-        console.log('🔍 Auto-loading current month/year...');
-        console.log('Current date:', now.toISOString());
-        console.log('Current month from JS:', currentMonthName);
-        console.log('Current year from JS:', currentYear);
-        console.log('Available months from DB:', options.months);
-        console.log('Available years from DB:', options.years);
+        if (!hasExistingFilters && options.months.length > 0) {
+          // Get current date info
+          const now = new Date();
+          const currentMonthName = now.toLocaleString('en-US', { month: 'long' });
+          const currentYear = now.getFullYear();
 
-        const monthToUse = options.months.find(m => 
-          m.trim().toLowerCase() === currentMonthName.toLowerCase()
-        );
-        
-        const yearToUse = options.years.includes(currentYear)
-          ? currentYear
-          : options.years[0];
+          console.log('🔍 Auto-loading current month/year (first load from welcome)...');
+          console.log('Current date:', now.toISOString());
+          console.log('Current month from JS:', currentMonthName);
+          console.log('Current year from JS:', currentYear);
+          console.log('Available months from DB:', options.months);
+          console.log('Available years from DB:', options.years);
 
-        const finalMonth = monthToUse || options.months[options.months.length - 1];
-        const finalYear = String(yearToUse);
+          const monthToUse = options.months.find(m =>
+            m.trim().toLowerCase() === currentMonthName.toLowerCase()
+          );
 
-        console.log('✅ Final selection:');
-        console.log('  - Month:', finalMonth);
-        console.log('  - Year:', finalYear);
+          const yearToUse = options.years.includes(currentYear)
+            ? currentYear
+            : options.years[0];
 
-        if (options.months.length > 0) {
-            setFilters({
-                month: finalMonth,
-                year: finalYear,
-            });
+          const finalMonth = monthToUse || options.months[options.months.length - 1];
+          const finalYear = String(yearToUse);
+
+          console.log('✅ Final selection:');
+          console.log('  - Month:', finalMonth);
+          console.log('  - Year:', finalYear);
+
+          setFilters({
+            month: finalMonth,
+            year: finalYear,
+          });
+        } else if (hasExistingFilters) {
+          console.log('✅ Using existing filters from tab switch:', currentFilters);
+          // Don't set loading to false - let the loadData effect handle it
         } else {
-            setLoading(false);
+          setLoading(false);
         }
       } catch (err) {
         console.error("❌ Failed to load filter options", err);
@@ -138,6 +152,19 @@ export default function UnderperformingView() {
     loadFilters();
   }, []);
 
+  // Sync local filters with shared filters from parent when they change externally
+  useEffect(() => {
+    if (currentFilters && Object.keys(currentFilters).length > 0) {
+      setFilters(currentFilters);
+    }
+  }, [currentFilters]);
+
+  // Notify parent component when filters change
+  useEffect(() => {
+    if (onFiltersChange) {
+      onFiltersChange(filters);
+    }
+  }, [filters, onFiltersChange]);
 
   // Combined data fetching function
   const loadData = useCallback(async (currentFilters: PerformanceFilters) => {
@@ -228,7 +255,7 @@ export default function UnderperformingView() {
 
   // Renders the entire employee grid with weeks as columns
   const renderEmployeeGrid = () => {
-    if (loading && groupedData.size === 0) {
+    if (loading) {
       return (
         <div style={{ padding: '40px', textAlign: 'center' }}>
           <Spinner size="large" label="Loading data..." />
@@ -264,10 +291,11 @@ export default function UnderperformingView() {
     const gridColumnsStyle = { gridTemplateColumns: `200px repeat(${weekHeaders.length}, minmax(180px, 1fr)) 200px` };
 
     return (
-      <div className="performance-grid-container" style={{ overflowX: 'auto', width: '100%' }}>
-        <div className="custom-grid-container" style={gridColumnsStyle}>
-          <div className="grid-header-row">
-            <div className="grid-header-cell">Employee List</div>
+      <Card className="data-grid-card">
+        <div style={{ maxHeight: '600px', overflowY: 'auto', overflowX: 'auto' }}>
+          <div className="custom-grid-container" style={gridColumnsStyle}>
+            <div className="grid-header-row">
+              <div className="grid-header-cell">Employee List</div>
             {weekHeaders.map((w, i) => (
               <div key={`week-header-${i}`} className="grid-header-cell">
                 <div>
@@ -446,25 +474,26 @@ export default function UnderperformingView() {
               </div>
             );
           })}
+          </div>
         </div>
-      </div>
+      </Card>
     );
   };
-  
+
   // Renders the Client Category grid with weekly breakdown
   const renderClientGrid = () => {
-    if (loading && clientSummaryData.length === 0) {
+    if (loading) {
       return (
         <div style={{ padding: '40px', textAlign: 'center' }}>
           <Spinner size="large" label="Loading client data..." />
         </div>
       );
     }
-    
+
     if (error) {
       return <div style={{ padding: '20px', textAlign: 'center', color: 'red' }}>Error: {error}</div>;
     }
-    
+
     if (clientSummaryData.length === 0) {
       return <div style={{padding: '20px', textAlign: 'center'}}>No client summary data found for the selected filters.</div>;
     }
@@ -509,9 +538,10 @@ export default function UnderperformingView() {
     };
 
     return (
-      <div className="performance-grid-container" style={{ overflowX: 'auto', width: '100%' }}>
-        <div className="custom-grid-container" style={gridColumnsStyle}>
-          {/* Header Row */}
+      <Card className="data-grid-card">
+        <div style={{ maxHeight: '600px', overflowY: 'auto', overflowX: 'auto' }}>
+          <div className="custom-grid-container" style={gridColumnsStyle}>
+            {/* Header Row */}
           <div className="grid-header-row">
             <div className="grid-header-cell">Client Name</div>
             {weekHeaders.map((w, i) => (
@@ -638,8 +668,9 @@ export default function UnderperformingView() {
               </div>
             );
           })}
+          </div>
         </div>
-      </div>
+      </Card>
     );
   };
 

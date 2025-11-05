@@ -225,10 +225,10 @@ export default function MonthlySummaryView({ currentFilters }: MonthlySummaryVie
       {/* DataGrid Section */}
       <Card className="data-grid-card">
         <h3>Performance by Client & Category</h3>
-        <div style={{ maxHeight: '500px', overflowY: 'auto', overflowX: 'auto' }}>
-          <DataGrid 
-            items={details} 
-            columns={columns} 
+        <div style={{ maxHeight: '600px', overflowY: 'auto', overflowX: 'auto' }}>
+          <DataGrid
+            items={details}
+            columns={columns}
             sortable
             getRowId={(item) => `${item.client}-${item.category}`}
           >

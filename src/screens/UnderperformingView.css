@@ -4,9 +4,9 @@
   display: flex;
   flex-direction: column;
   padding: 24px;
+  padding-bottom: 80px; /* Extra space at bottom to prevent going behind taskbar */
   gap: 16px;
-  height: calc(100vh - 120px); /* Adjust based on your header height */
-  overflow: visible; /* FIXED: Changed from 'hidden' to 'visible' to allow scrolling */
+  overflow: visible; /* Allow content to be visible */
 }
 
 .top-filters-row {
@@ -32,10 +32,11 @@
 /* --- GRID STRUCTURE --- */
 .performance-grid-container {
     width: 100%;
-    flex: 1; /* Allows it to fill available space */
+    max-height: 600px; /* Fixed height container like MonthlySummaryView */
     overflow-y: auto; /* Vertical scrolling for rows */
     overflow-x: auto; /* Horizontal scrolling for columns */
-    padding-bottom: 8px;
+    padding-bottom: 32px; /* Space inside the scroll container */
+    margin-bottom: 48px; /* Extra margin to ensure spacing from screen bottom */
 }
 
 .custom-grid-container {

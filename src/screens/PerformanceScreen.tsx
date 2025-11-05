@@ -1,12 +1,13 @@
 // src/screens/performance/PerformanceScreen.tsx
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 
 // Import the main layout components and its corresponding stylesheet
 import Header from '../components/Header';
 import './PerformanceScreen.css';
 import { useUserRole } from '../services/useUserRole'; // <-- Import the role hook
+import type { PerformanceFilters } from '../services/api';
 
 // Import the three view components that will be shown in the tabs
 import MonthlySummaryView from './MonthlySummaryView';
@@ -23,8 +24,15 @@ interface PerformanceScreenProps {
 
 export default function PerformanceScreen({ onGoToWelcome }: PerformanceScreenProps) {
   const [selectedView, setSelectedView] = useState<View>('underperforming');
+  // Shared filter state across all tabs
+  const [sharedFilters, setSharedFilters] = useState<PerformanceFilters>({});
   // 1. Get role and permission flags from the hook
-  const { role, receivesReports, receivesNotifications } = useUserRole(); 
+  const { role, receivesReports, receivesNotifications } = useUserRole();
+
+  // Reset filters when component mounts (when returning from welcome screen)
+  useEffect(() => {
+    setSharedFilters({});
+  }, []); 
 
   const onTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
     setSelectedView(data.value as View);
@@ -33,9 +41,9 @@ export default function PerformanceScreen({ onGoToWelcome }: PerformanceScreenPr
   const renderContent = () => {
     switch (selectedView) {
       case 'underperforming':
-        return <UnderperformingView />;
+        return <UnderperformingView currentFilters={sharedFilters} onFiltersChange={setSharedFilters} />;
       case 'summary':
-        return <MonthlySummaryView />;
+        return <MonthlySummaryView currentFilters={sharedFilters} />;
       case 'actionlog':
         return <ActionLogView />;
       default:

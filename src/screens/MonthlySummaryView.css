@@ -4,6 +4,8 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  width: 100%;
+  padding-bottom: 24px; /* Add space at bottom for better scrolling */
 }
 
 .kpi-cards-grid {
