@@ -19,6 +19,7 @@ import TakeActionDialog from './TakeActionDialog';
 import FilterPopover from '../components/ui/FilterPopover';
 import RecommendationsDialog from './RecommendationsDialog';
 import { useUserRole } from '../services/useUserRole';
+import { EmployeeAvatar } from '../components/EmployeeAvatar';
 
 import {
   fetchPerformanceData,
@@ -224,7 +225,9 @@ export default function UnderperformingView({ currentFilters, onFiltersChange }:
   const handleViewRecommendations = (agentEmail: string, agentName: string) => {
     const agentRawData = rawData.filter(d => d.agent_email === agentEmail);
     const agentWeeksMap = groupByWeek(agentRawData);
-    const monthlyResults = calculateAgentMonthlyResults(agentWeeksMap, agentEmail, actionLogData);
+    // groupByWeek returns Map<string, Map<string, PerformanceData[]>>, we need the inner Map
+    const agentWeeksData = agentWeeksMap.get(agentEmail) || new Map<string, PerformanceData[]>();
+    const monthlyResults = calculateAgentMonthlyResults(agentWeeksData, agentEmail, actionLogData);
     const currentRecommendation = generateRecommendation(monthlyResults);
 
     setRecommendationsDialogState({
@@ -287,7 +290,6 @@ export default function UnderperformingView({ currentFilters, onFiltersChange }:
         return { label: weekLabel, weekRange, startDate: weekData?.start_date };
     });
 
-    const totalColumns = weekHeaders.length + 2;
     const gridColumnsStyle = { gridTemplateColumns: `200px repeat(${weekHeaders.length}, minmax(180px, 1fr)) 200px` };
 
     return (
@@ -337,7 +339,12 @@ export default function UnderperformingView({ currentFilters, onFiltersChange }:
             return (
               <div key={agentKey} className="grid-body-row">
                 <div className="grid-card" style={{ gap: '8px' }}>
-                  <Avatar name={agentName} size={32} />
+                  <EmployeeAvatar
+                    employeeId={firstRecord?.agent_id}
+                    employeeName={agentName}
+                    employeeEmail={agentEmail}
+                    size="medium"
+                  />
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontWeight: 600 }}>{agentName}</span>
                     <span style={{ fontSize: '0.75rem', color: '#666' }}>{agentEmail}</span>
@@ -688,7 +695,7 @@ export default function UnderperformingView({ currentFilters, onFiltersChange }:
       
       <RecommendationsDialog
         isOpen={recommendationsDialogState.isOpen}
-        onClose={handleRecommendationClose}
+        onDismiss={handleRecommendationClose}
         agentName={recommendationsDialogState.agentName}
         monthlyResults={recommendationsDialogState.monthlyResults}
         recommendation={recommendationsDialogState.recommendation}
@@ -734,7 +741,7 @@ export default function UnderperformingView({ currentFilters, onFiltersChange }:
                     style={{ minWidth: '80px' }}
                 >
                     {filterOptions.years.map(year => (
-                        <Option key={String(year)} value={String(year)}>{year}</Option>
+                        <Option key={String(year)} value={String(year)} text={String(year)}>{year}</Option>
                     ))}
                 </Dropdown>
             </div>

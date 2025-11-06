@@ -1,0 +1,115 @@
+/* src/screens/AccessDenied.css */
+
+.access-denied-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+  padding: 24px;
+}
+
+.access-denied-card {
+  max-width: 600px;
+  width: 100%;
+  padding: 48px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.access-denied-icon {
+  margin-bottom: 24px;
+}
+
+.access-denied-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #d13438;
+  margin: 0 0 24px 0;
+}
+
+.access-denied-message {
+  margin-bottom: 32px;
+  color: #333;
+  line-height: 1.6;
+}
+
+.access-denied-message p {
+  margin: 8px 0;
+}
+
+.user-info-box {
+  background-color: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  text-align: left;
+}
+
+.user-info-box p {
+  margin: 8px 0;
+  font-size: 0.95rem;
+}
+
+.access-info-box {
+  background-color: #e3f2fd;
+  border: 1px solid #90caf9;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 24px 0;
+  display: flex;
+  gap: 16px;
+  text-align: left;
+}
+
+.access-info-content {
+  flex: 1;
+}
+
+.access-info-content h3 {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #0078d4;
+}
+
+.access-info-content p {
+  margin: 8px 0;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.access-info-content ul {
+  margin: 12px 0;
+  padding-left: 24px;
+  list-style-type: disc;
+}
+
+.access-info-content li {
+  margin: 6px 0;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.access-denied-footer {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.access-denied-footer p {
+  margin: 6px 0;
+}
+
+.access-denied-footer a {
+  color: #0078d4;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.access-denied-footer a:hover {
+  text-decoration: underline;
+}

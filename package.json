@@ -4,15 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "start pac code run && vite",
+    "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@azure/msal-browser": "^4.26.0",
+    "@azure/msal-react": "^3.0.21",
     "@fluentui/react-components": "^9.72.3",
     "@fluentui/react-icons": "^2.0.312",
-    "@microsoft/power-apps": "^0.3.21",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

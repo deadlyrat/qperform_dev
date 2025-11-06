@@ -5,7 +5,7 @@
   flex-direction: column;
   gap: 24px;
   width: 100%;
-  padding-bottom: 24px; /* Add space at bottom for better scrolling */
+  padding-bottom: 120px; /* Add space at bottom to prevent going behind taskbar */
 }
 
 .kpi-cards-grid {

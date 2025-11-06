@@ -1,23 +1,47 @@
 // src/App.tsx
 
-import { useState } from 'react';
-import { FluentProvider, teamsLightTheme } from '@fluentui/react-components';
+import { useState, useEffect } from 'react';
+import { FluentProvider, teamsLightTheme, Spinner } from '@fluentui/react-components';
 import WelcomeScreen from './screens/WelcomeScreen';
 import PerformanceScreen from './screens/PerformanceScreen';
-import OrientationLock from './components/ui/OrientationLock'; 
-import './App.css'; 
+import AccessDenied from './screens/AccessDenied';
+import OrientationLock from './components/ui/OrientationLock';
+import { useUserRole } from './services/useUserRole';
+import './App.css';
+
+type AppState = 'welcome' | 'authenticating' | 'authorized' | 'denied';
 
 function App() {
-  // State controls which screen is visible: Welcome (false) or Dashboard (true)
-  const [showDashboard, setShowDashboard] = useState(false);
+  const [appState, setAppState] = useState<AppState>('welcome');
 
+  // Only authenticate when user tries to enter dashboard or is in an auth-related state
+  // Pass shouldAuthenticate=true after Enter Dashboard is clicked and keep it true during auth flow
+  const shouldAuth = appState === 'authenticating' || appState === 'authorized' || appState === 'denied';
+  const { isLoading, isAuthorized, user } = useUserRole(shouldAuth);
+
+  // Handle Enter Dashboard button click
   const handleEnterDashboard = () => {
-    setShowDashboard(true);
+    setAppState('authenticating');
   };
-  
-  // This function resets the state to show the WelcomeScreen
+
+  // Update app state based on authentication result
+  useEffect(() => {
+    console.log('🔄 App.tsx useEffect:', { appState, isLoading, isAuthorized });
+
+    // Only update state when we're in the authenticating phase and loading is complete
+    if (appState === 'authenticating' && !isLoading) {
+      console.log('🔄 Transitioning from authenticating to:', isAuthorized ? 'authorized' : 'denied');
+      if (isAuthorized) {
+        setAppState('authorized');
+      } else {
+        setAppState('denied');
+      }
+    }
+  }, [appState, isLoading, isAuthorized]);
+
+  // This function resets to welcome screen
   const handleGoToWelcome = () => {
-    setShowDashboard(false);
+    setAppState('welcome');
   };
 
   return (
@@ -25,13 +49,28 @@ function App() {
       <OrientationLock />
 
       <FluentProvider theme={teamsLightTheme}>
-        {showDashboard ? (
-          // Renders the main app dashboard.
-          // It receives the navigation reset function, which is relayed to the Header.
-          <PerformanceScreen onGoToWelcome={handleGoToWelcome} />
-        ) : (
-          // Renders the initial landing page.
+        {appState === 'welcome' ? (
+          // Show welcome screen first (no authentication yet)
           <WelcomeScreen onEnter={handleEnterDashboard} />
+        ) : appState === 'authenticating' ? (
+          // Show loading spinner while authenticating
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            minHeight: '100vh',
+            gap: '16px'
+          }}>
+            <Spinner size="extra-large" label="Authenticating..." />
+            <p style={{ color: '#666' }}>Verifying your OnQ credentials...</p>
+          </div>
+        ) : appState === 'denied' ? (
+          // Show access denied screen if user is not authorized
+          <AccessDenied user={user} onGoBack={handleGoToWelcome} />
+        ) : (
+          // Show main app dashboard for authorized users
+          <PerformanceScreen onGoToWelcome={handleGoToWelcome} />
         )}
       </FluentProvider>
     </div>

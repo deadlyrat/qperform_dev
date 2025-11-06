@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import {
   DataGrid,
@@ -7,7 +6,7 @@ import {
   DataGridHeader,
   DataGridHeaderCell,
   DataGridCell,
-  TableColumnDefinition,
+  type TableColumnDefinition,
   createTableColumn,
   TableCellLayout,
   Avatar,

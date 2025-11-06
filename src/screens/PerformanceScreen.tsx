@@ -27,12 +27,12 @@ export default function PerformanceScreen({ onGoToWelcome }: PerformanceScreenPr
   // Shared filter state across all tabs
   const [sharedFilters, setSharedFilters] = useState<PerformanceFilters>({});
   // 1. Get role and permission flags from the hook
-  const { role, receivesReports, receivesNotifications } = useUserRole();
+  const { role, user, canTakeAction, receivesNotifications } = useUserRole();
 
   // Reset filters when component mounts (when returning from welcome screen)
   useEffect(() => {
     setSharedFilters({});
-  }, []); 
+  }, []);
 
   const onTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
     setSelectedView(data.value as View);
@@ -53,19 +53,19 @@ export default function PerformanceScreen({ onGoToWelcome }: PerformanceScreenPr
 
   // User details (Name for Avatar, notifications for badge)
   const currentUser = {
-    name: "Pablo Aguirre",
+    name: user?.displayName || "User",
     notifications: 3,
   };
-  
+
   // 2. Custom message based on role (Acknowledging notification recipients)
   const getRoleMessage = () => {
-      if (receivesReports) {
-          // Director/AVP Role: Receives full reports
+      if (canTakeAction) {
+          // Director/AVP Role: Can take actions and receives reports
           return `Your role (${role}) receives automated Weekly Performance Reports and has full action authority.`;
       }
       if (receivesNotifications) {
-          // MIS Role: Receives weekly notifications
-          return `Your role (${role}) receives Weekly Notifications to monitor high-risk trends.`;
+          // Other leadership roles: Receives notifications
+          return `Your role (${role}) receives Weekly Notifications to monitor performance trends.`;
       }
       // Standard User Role: View-only
       return `Your role (${role}) has view-only access to all dashboards.`;
