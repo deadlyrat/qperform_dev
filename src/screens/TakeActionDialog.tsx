@@ -1,5 +1,6 @@
 // src/screens/performance/underperforming/TakeActionDialog.tsx
 
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTrigger,
@@ -14,82 +15,375 @@ import {
   Label,
   makeStyles,
   tokens,
+  MessageBar,
+  MessageBarBody,
+  Spinner,
 } from "@fluentui/react-components";
+import {
+  Person24Regular,
+  CalendarLtr24Regular,
+  ChartMultiple24Regular,
+  Warning24Regular,
+  NoteEdit24Regular,
+} from "@fluentui/react-icons";
+import {
+  generateRecommendation,
+  createWarning,
+  type Recommendation,
+  type WarningType,
+  getCaseDescription,
+  getPriorityColor,
+} from '../services/warningService';
 
-// Simple styles for spacing
+// Modern styles with fixed dimensions
 const useStyles = makeStyles({
   root: {
     display: "flex",
     flexDirection: "column",
-    gap: tokens.spacingVerticalM,
+    gap: tokens.spacingVerticalL,
+  },
+  formField: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.spacingVerticalXS,
+    minHeight: '70px', // Fixed minimum height for consistency
+  },
+  dropdownWrapper: {
+    width: '100%',
+    minWidth: '100%',
+  },
+  recommendationBox: {
+    padding: tokens.spacingVerticalL,
+    borderRadius: tokens.borderRadiusMedium,
+    border: `2px solid ${tokens.colorBrandBackground}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+    boxShadow: tokens.shadow4,
+    minHeight: '100px',
+  },
+  recommendationTitle: {
+    fontWeight: tokens.fontWeightSemibold,
+    marginBottom: tokens.spacingVerticalS,
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    fontSize: tokens.fontSizeBase300,
+  },
+  recommendationDetails: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground2,
+    marginTop: tokens.spacingVerticalXS,
+    lineHeight: '1.5',
+  },
+  priorityBadge: {
+    padding: '4px 12px',
+    borderRadius: tokens.borderRadiusSmall,
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    color: 'white',
+  },
+  labelWithIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    fontWeight: tokens.fontWeightSemibold,
   },
 });
 
 type TakeActionDialogProps = {
   isOpen: boolean;
   onDismiss: () => void;
-  employees: { id: string; name: string }[]; // Pass employee list for the dropdown
+  employees: { id: string; name: string; email: string }[]; // Now includes email
+  weekRanges?: { start_date: string; end_date: string; week_range: string }[]; // Available week ranges
+  preSelectedEmployee?: string; // Pre-select an employee
+  preSelectedWeek?: { start_date: string; end_date: string }; // Pre-select a week
   onActionSuccess: () => void; // Callback for successful action submission
 };
 
-export default function TakeActionDialog({ isOpen, onDismiss, employees }: TakeActionDialogProps) {
+export default function TakeActionDialog({
+  isOpen,
+  onDismiss,
+  employees,
+  weekRanges = [],
+  preSelectedEmployee,
+  preSelectedWeek,
+  onActionSuccess,
+}: TakeActionDialogProps) {
   const styles = useStyles();
 
-  const handleSubmit = () => {
-    // In a real app, you would gather the form data and send it to your API
-    console.log("Submit action clicked!");
-    onDismiss(); // Close the dialog after submission
+  // Form state
+  const [selectedEmployee, setSelectedEmployee] = useState<string>(preSelectedEmployee || '');
+  const [selectedWeekRange, setSelectedWeekRange] = useState<string>('');
+  const [selectedMetricType, setSelectedMetricType] = useState<'Production' | 'QA'>('QA');
+  const [actionType, setActionType] = useState<WarningType | ''>('');
+  const [actionNotes, setActionNotes] = useState('');
+
+  // Recommendation state
+  const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
+  const [isLoadingRecommendation, setIsLoadingRecommendation] = useState(false);
+  const [recommendationError, setRecommendationError] = useState<string | null>(null);
+
+  // Submission state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Reset form when dialog opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedEmployee(preSelectedEmployee || '');
+      if (preSelectedWeek) {
+        setSelectedWeekRange(`${preSelectedWeek.start_date}_${preSelectedWeek.end_date}`);
+      }
+    } else {
+      // Reset on close
+      setSelectedEmployee('');
+      setSelectedWeekRange('');
+      setActionType('');
+      setActionNotes('');
+      setRecommendation(null);
+      setRecommendationError(null);
+    }
+  }, [isOpen, preSelectedEmployee, preSelectedWeek]);
+
+  // Generate recommendation when employee and week are selected
+  useEffect(() => {
+    async function fetchRecommendation() {
+      if (!selectedEmployee || !selectedWeekRange) {
+        setRecommendation(null);
+        return;
+      }
+
+      const employee = employees.find(e => e.id === selectedEmployee);
+      if (!employee?.email) return;
+
+      const [startDate, endDate] = selectedWeekRange.split('_');
+
+      setIsLoadingRecommendation(true);
+      setRecommendationError(null);
+
+      try {
+        const rec = await generateRecommendation(
+          employee.email,
+          selectedMetricType,
+          new Date(startDate),
+          new Date(endDate)
+        );
+
+        setRecommendation(rec);
+
+        // Auto-fill action type based on recommendation
+        if (rec.recommendation_type && rec.recommendation_type.includes('Verbal')) {
+          setActionType('Verbal');
+        } else if (rec.recommendation_type && rec.recommendation_type.includes('Written')) {
+          setActionType('Written');
+        } else if (rec.recommendation_type && rec.recommendation_type.includes('Coaching')) {
+          setActionType('Coaching');
+        }
+
+      } catch (error) {
+        console.error('Error fetching recommendation:', error);
+        setRecommendationError('Failed to generate recommendation. Please try again.');
+        setRecommendation(null);
+      } finally {
+        setIsLoadingRecommendation(false);
+      }
+    }
+
+    fetchRecommendation();
+  }, [selectedEmployee, selectedWeekRange, selectedMetricType, employees]);
+
+  const handleSubmit = async () => {
+    if (!selectedEmployee || !actionType || !actionNotes || !selectedWeekRange) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    const employee = employees.find(e => e.id === selectedEmployee);
+    if (!employee) return;
+
+    const [startDate, endDate] = selectedWeekRange.split('_');
+
+    setIsSubmitting(true);
+
+    try {
+      // Create warning
+      await createWarning({
+        agentId: employee.id,
+        agentEmail: employee.email,
+        agentName: employee.name,
+        warningType: actionType as WarningType,
+        metricType: selectedMetricType,
+        issuedBy: 'Current User', // TODO: Get from auth context
+        notes: actionNotes,
+        weekStartDate: new Date(startDate),
+        weekEndDate: new Date(endDate),
+      });
+
+      onActionSuccess();
+      onDismiss();
+    } catch (error) {
+      console.error('Error creating warning:', error);
+      alert('Failed to create warning. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(_event, data) => !data.open && onDismiss()}>
-      <DialogSurface>
+      <DialogSurface style={{ maxWidth: '600px' }}>
         <DialogBody>
           <DialogTitle>Take Action</DialogTitle>
-          <p>Document and record a performance action for an employee or client.</p>
-          
+          <p style={{ marginBottom: '16px', color: tokens.colorNeutralForeground2 }}>
+            Document and record a performance action for an employee or client.
+          </p>
+
           <div className={styles.root}>
-            <div>
-              <Label required>Action Type</Label>
-              <Dropdown placeholder="Select action type">
-                <Option value="coaching">Coaching</Option>
-                <Option value="written_warning">Written Warning</Option>
-                <Option value="final_warning">Final Warning</Option>
-              </Dropdown>
+            <div className={styles.formField}>
+              <Label required className={styles.labelWithIcon}>
+                <Person24Regular />
+                Select Employee
+              </Label>
+              <div className={styles.dropdownWrapper}>
+                <Dropdown
+                  placeholder="Select employee"
+                  value={employees.find(e => e.id === selectedEmployee)?.name || ''}
+                  onOptionSelect={(_, data) => setSelectedEmployee(data.optionValue || '')}
+                  style={{ width: '100%' }}
+                >
+                  {(employees || []).map(emp => (
+                    <Option key={emp.id} value={emp.id}>{emp.name}</Option>
+                  ))}
+                </Dropdown>
+              </div>
             </div>
 
-            <div>
-              <Label required>Target Type</Label>
-              <Dropdown placeholder="Select target type" defaultValue="Employee" selectedOptions={["employee"]}>
-                <Option value="employee">Employee</Option>
-                <Option value="client" disabled>Client (coming soon)</Option>
-              </Dropdown>
-            </div>
-            
-            <div>
-              <Label required>Select Employee</Label>
-              <Dropdown placeholder="Select employee">
-                {/* Add optional chaining AND default to empty array */}
-                {(employees || []).map(emp => (
-                  <Option key={emp.id} value={emp.id}>{emp.name}</Option>
-                ))}
-              </Dropdown>
+            <div className={styles.formField}>
+              <Label required className={styles.labelWithIcon}>
+                <CalendarLtr24Regular />
+                Week Range
+              </Label>
+              <div className={styles.dropdownWrapper}>
+                <Dropdown
+                  placeholder="Select week range"
+                  value={weekRanges.find(w => `${w.start_date}_${w.end_date}` === selectedWeekRange)?.week_range || ''}
+                  onOptionSelect={(_, data) => setSelectedWeekRange(data.optionValue || '')}
+                  style={{ width: '100%' }}
+                >
+                  {weekRanges.map(week => (
+                    <Option
+                      key={`${week.start_date}_${week.end_date}`}
+                      value={`${week.start_date}_${week.end_date}`}
+                    >
+                      {week.week_range}
+                    </Option>
+                  ))}
+                </Dropdown>
+              </div>
             </div>
 
-            <div>
-              <Label required>Action Notes</Label>
+            <div className={styles.formField}>
+              <Label required className={styles.labelWithIcon}>
+                <ChartMultiple24Regular />
+                Metric Type
+              </Label>
+              <div className={styles.dropdownWrapper}>
+                <Dropdown
+                  placeholder="Select metric type"
+                  value={selectedMetricType}
+                  onOptionSelect={(_, data) => setSelectedMetricType(data.optionValue as 'Production' | 'QA')}
+                  style={{ width: '100%' }}
+                >
+                  <Option value="QA">Quality Assurance (QA)</Option>
+                  <Option value="Production">Production</Option>
+                </Dropdown>
+              </div>
+            </div>
+
+            {/* Recommendation Display */}
+            {isLoadingRecommendation && (
+              <MessageBar intent="info">
+                <MessageBarBody>
+                  <Spinner size="tiny" style={{ marginRight: '8px' }} />
+                  Analyzing warning history and generating recommendation...
+                </MessageBarBody>
+              </MessageBar>
+            )}
+
+            {recommendationError && (
+              <MessageBar intent="error">
+                <MessageBarBody>{recommendationError}</MessageBarBody>
+              </MessageBar>
+            )}
+
+            {recommendation && !isLoadingRecommendation && (
+              <div className={styles.recommendationBox}>
+                <div className={styles.recommendationTitle}>
+                  <span>📋 Recommended Action</span>
+                  <span
+                    className={styles.priorityBadge}
+                    style={{ backgroundColor: getPriorityColor(recommendation.priority) }}
+                  >
+                    {recommendation.priority}
+                  </span>
+                </div>
+                <div style={{ fontSize: tokens.fontSizeBase300, fontWeight: tokens.fontWeightSemibold }}>
+                  {recommendation.recommendation_type}
+                </div>
+                <div className={styles.recommendationDetails}>
+                  {getCaseDescription(recommendation.case)}
+                </div>
+                <div className={styles.recommendationDetails} style={{ marginTop: tokens.spacingVerticalS }}>
+                  {recommendation.recommendation_text}
+                </div>
+              </div>
+            )}
+
+            <div className={styles.formField}>
+              <Label required className={styles.labelWithIcon}>
+                <Warning24Regular />
+                Action Type
+              </Label>
+              <div className={styles.dropdownWrapper}>
+                <Dropdown
+                  placeholder="Select action type"
+                  value={actionType}
+                  onOptionSelect={(_, data) => setActionType(data.optionValue as WarningType)}
+                  style={{ width: '100%' }}
+                >
+                  <Option value="Verbal">Verbal Warning</Option>
+                  <Option value="Written">Written Warning</Option>
+                  <Option value="Coaching">Coaching/Reinforcement</Option>
+                </Dropdown>
+              </div>
+            </div>
+
+            <div className={styles.formField} style={{ minHeight: '150px' }}>
+              <Label required className={styles.labelWithIcon}>
+                <NoteEdit24Regular />
+                Action Notes
+              </Label>
               <Textarea
                 placeholder="Provide detailed notes about this action, including context, observations, and expected outcomes..."
-                style={{ minHeight: "120px" }}
+                value={actionNotes}
+                onChange={(_, data) => setActionNotes(data.value)}
+                style={{ minHeight: "120px", width: '100%' }}
+                resize="vertical"
               />
             </div>
           </div>
 
           <DialogActions>
             <DialogTrigger disableButtonEnhancement>
-              <Button appearance="secondary" onClick={onDismiss}>Cancel</Button>
+              <Button appearance="secondary" onClick={onDismiss} disabled={isSubmitting}>
+                Cancel
+              </Button>
             </DialogTrigger>
-            <Button appearance="primary" onClick={handleSubmit}>Submit Action</Button>
+            <Button
+              appearance="primary"
+              onClick={handleSubmit}
+              disabled={isSubmitting || !selectedEmployee || !actionType || !actionNotes || !selectedWeekRange}
+            >
+              {isSubmitting ? <Spinner size="tiny" /> : 'Submit Action'}
+            </Button>
           </DialogActions>
         </DialogBody>
       </DialogSurface>

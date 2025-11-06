@@ -208,17 +208,38 @@ export default function UnderperformingView({ currentFilters, onFiltersChange }:
   const employeeList = useMemo(() =>
     Array.from(groupedData.keys()).map(key => {
         const weeksMap = groupedData.get(key);
-        const firstRecord = weeksMap 
-            ? Array.from(weeksMap.values())[0]?.[0] 
+        const firstRecord = weeksMap
+            ? Array.from(weeksMap.values())[0]?.[0]
             : null;
 
-        const email = firstRecord?.agent_email || key; 
+        const email = firstRecord?.agent_email || key;
         const name = firstRecord?.agent_name || email.split('@')[0] || 'Unknown Agent';
 
-        return { id: key, name: name };
+        return { id: key, name: name, email: email };
     }),
     [groupedData]
   );
+
+  // Extract unique week ranges from raw data for the Take Action dialog
+  const weekRanges = useMemo(() => {
+    const uniqueWeeks = new Map<string, { start_date: string; end_date: string; week_range: string }>();
+
+    rawData.forEach(record => {
+      const key = `${record.start_date}_${record.end_date}`;
+      if (!uniqueWeeks.has(key)) {
+        uniqueWeeks.set(key, {
+          start_date: record.start_date,
+          end_date: record.end_date,
+          week_range: record.week_range,
+        });
+      }
+    });
+
+    // Sort by start_date descending (most recent first)
+    return Array.from(uniqueWeeks.values()).sort((a, b) =>
+      new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
+    );
+  }, [rawData]);
 
 
   // --- RECOMMENDATIONS LOGIC ---
@@ -686,10 +707,11 @@ export default function UnderperformingView({ currentFilters, onFiltersChange }:
   return (
     <div className="underperforming-view-container">
 
-      <TakeActionDialog 
-        isOpen={isTakeActionOpen} 
-        onDismiss={() => setIsTakeActionOpen(false)} 
+      <TakeActionDialog
+        isOpen={isTakeActionOpen}
+        onDismiss={() => setIsTakeActionOpen(false)}
         employees={employeeList}
+        weekRanges={weekRanges}
         onActionSuccess={() => loadData(filters)}
       />
       
