@@ -388,11 +388,19 @@ export default function UnderperformingView({ currentFilters, onFiltersChange }:
                   const weeklyScorePercent = Math.round(firstRecord.kpi_qa * 100);
                   
                   const weekStartDate = new Date(firstRecord.start_date);
-                  const weekEndDate = new Date(weekStartDate.getTime() + (7 * 24 * 60 * 60 * 1000));
-                  
+                  const weekEndDate = new Date(firstRecord.end_date);
+
                   const weekActions = agentActions.filter(action => {
+                    // If action has week_start_date and week_end_date, match by those
+                    if (action.week_start_date && action.week_end_date) {
+                      const actionWeekStart = new Date(action.week_start_date);
+                      const actionWeekEnd = new Date(action.week_end_date);
+                      return actionWeekStart.getTime() === weekStartDate.getTime() &&
+                             actionWeekEnd.getTime() === weekEndDate.getTime();
+                    }
+                    // Fallback: match by action_date if week dates not available
                     const actionDate = new Date(action.action_date);
-                    return actionDate >= weekStartDate && actionDate < weekEndDate;
+                    return actionDate >= weekStartDate && actionDate <= weekEndDate;
                   });
                   
                   const actionCount = weekActions.length;

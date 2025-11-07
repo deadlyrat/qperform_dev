@@ -58,10 +58,13 @@ export interface SummaryItem {
 export interface ActionLog {
   id: number;
   agent_email: string;
+  agent_name?: string;
   action_type: string;
   description: string;
   taken_by: string;
   action_date: string;
+  week_start_date?: string;
+  week_end_date?: string;
   client: string;
   category: string;
 }
@@ -212,15 +215,63 @@ export async function createAction(action: Omit<ActionLog, 'id'>): Promise<{ suc
       },
       body: JSON.stringify(action),
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const data = await response.json();
     return data;
   } catch (error) {
     console.error('Error creating action:', error);
+    throw error;
+  }
+}
+
+export async function checkDuplicateAction(
+  agentEmail: string,
+  weekStartDate: Date,
+  weekEndDate: Date
+): Promise<{ exists: boolean; action?: any }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/action-log/check-duplicate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        agentEmail,
+        weekStartDate: weekStartDate.toISOString().split('T')[0],
+        weekEndDate: weekEndDate.toISOString().split('T')[0],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error checking duplicate action:', error);
+    throw error;
+  }
+}
+
+export async function deleteAction(actionId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/action-log/${actionId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error deleting action:', error);
     throw error;
   }
 }

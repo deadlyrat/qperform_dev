@@ -34,6 +34,7 @@ import {
   getCaseDescription,
   getPriorityColor,
 } from '../services/warningService';
+import { checkDuplicateAction, deleteAction } from '../services/api';
 
 // Modern styles with fixed dimensions
 const useStyles = makeStyles({
@@ -124,6 +125,8 @@ export default function TakeActionDialog({
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [existingAction, setExistingAction] = useState<any>(null);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
   // Reset form when dialog opens/closes
   useEffect(() => {
@@ -204,6 +207,20 @@ export default function TakeActionDialog({
     setIsSubmitting(true);
 
     try {
+      // Check for duplicate action
+      const duplicateCheck = await checkDuplicateAction(
+        employee.email,
+        new Date(startDate),
+        new Date(endDate)
+      );
+
+      if (duplicateCheck.exists) {
+        setExistingAction(duplicateCheck.action);
+        setShowDuplicateWarning(true);
+        setIsSubmitting(false);
+        return;
+      }
+
       // Create warning
       await createWarning({
         agentId: employee.id,
@@ -222,6 +239,24 @@ export default function TakeActionDialog({
     } catch (error) {
       console.error('Error creating warning:', error);
       alert('Failed to create warning. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteExisting = async () => {
+    if (!existingAction) return;
+
+    setIsSubmitting(true);
+    try {
+      await deleteAction(existingAction.id);
+      setShowDuplicateWarning(false);
+      setExistingAction(null);
+      alert('Previous action deleted. You can now submit a new action.');
+      onActionSuccess(); // Refresh the data
+    } catch (error) {
+      console.error('Error deleting action:', error);
+      alert('Failed to delete action. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -311,6 +346,44 @@ export default function TakeActionDialog({
             {recommendationError && (
               <MessageBar intent="error">
                 <MessageBarBody>{recommendationError}</MessageBarBody>
+              </MessageBar>
+            )}
+
+            {showDuplicateWarning && existingAction && (
+              <MessageBar intent="warning">
+                <MessageBarBody>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <strong>Action Already Exists for This Week</strong>
+                    <div style={{ fontSize: '0.9em' }}>
+                      An action was already logged for this employee on this week:
+                      <br />
+                      <strong>Type:</strong> {existingAction.action_type}
+                      <br />
+                      <strong>Description:</strong> {existingAction.description}
+                      <br />
+                      <strong>Logged by:</strong> {existingAction.taken_by} on{' '}
+                      {new Date(existingAction.action_date).toLocaleDateString()}
+                    </div>
+                    <div style={{ marginTop: '8px' }}>
+                      <Button
+                        appearance="secondary"
+                        size="small"
+                        onClick={handleDeleteExisting}
+                        disabled={isSubmitting}
+                      >
+                        Delete Existing Action
+                      </Button>
+                      <Button
+                        appearance="subtle"
+                        size="small"
+                        onClick={() => setShowDuplicateWarning(false)}
+                        style={{ marginLeft: '8px' }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </MessageBarBody>
               </MessageBar>
             )}
 

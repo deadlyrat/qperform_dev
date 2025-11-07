@@ -7,32 +7,86 @@ import {
   DialogBody,
   DialogActions,
   Button,
-  Card,
-  CardHeader,
-  Text,
+  Label,
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
-import { Warning24Regular, Comment24Regular } from "@fluentui/react-icons";
+import {
+  Person24Regular,
+  CalendarMonth24Regular,
+  CheckmarkCircle24Regular,
+  CommentMultiple24Regular,
+  Warning24Regular,
+  Lightbulb24Regular,
+} from "@fluentui/react-icons";
 import { type AgentMonthlyResults, type Recommendation } from '../services/api';
 
+// Modern styles matching TakeActionDialog
 const useStyles = makeStyles({
-  notesContainer: {
-    padding: tokens.spacingVerticalM,
-    borderLeftColor: tokens.colorBrandBackground,
-    borderLeftWidth: '4px',
-    borderLeftStyle: 'solid',
-    backgroundColor: tokens.colorNeutralBackground1,
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.spacingVerticalL,
   },
-  resultGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: tokens.spacingVerticalS,
-    marginBottom: tokens.spacingVerticalL,
+  infoSection: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.spacingVerticalM,
+  },
+  infoRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: tokens.spacingHorizontalS,
+    minHeight: '40px',
+  },
+  labelWithIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    fontWeight: tokens.fontWeightSemibold,
+    minWidth: '180px',
+    color: tokens.colorNeutralForeground2,
+  },
+  valueText: {
+    fontWeight: tokens.fontWeightSemibold,
+    fontSize: tokens.fontSizeBase300,
+  },
+  recommendationBox: {
+    padding: tokens.spacingVerticalL,
+    borderRadius: tokens.borderRadiusMedium,
+    border: `2px solid ${tokens.colorBrandBackground}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+    boxShadow: tokens.shadow4,
+    minHeight: '100px',
+  },
+  recommendationTitle: {
+    fontWeight: tokens.fontWeightSemibold,
+    marginBottom: tokens.spacingVerticalS,
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    fontSize: tokens.fontSizeBase400,
+  },
+  recommendationAction: {
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightSemibold,
+    marginTop: tokens.spacingVerticalXS,
+  },
+  recommendationNotes: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground2,
+    marginTop: tokens.spacingVerticalS,
+    lineHeight: '1.5',
   },
   critical: {
     color: tokens.colorPaletteRedForeground1,
-    fontWeight: tokens.fontWeightBold,
+  },
+  statusBadge: {
+    padding: '4px 12px',
+    borderRadius: tokens.borderRadiusSmall,
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    color: 'white',
   }
 });
 
@@ -44,49 +98,83 @@ interface RecommendationsDialogProps {
   recommendation: Recommendation;
 }
 
-export default function RecommendationsDialog({ 
-  isOpen, 
-  onDismiss, 
-  agentName, 
-  monthlyResults, 
-  recommendation 
+export default function RecommendationsDialog({
+  isOpen,
+  onDismiss,
+  agentName,
+  monthlyResults,
+  recommendation
 }: RecommendationsDialogProps) {
   const styles = useStyles();
-  
+
   const scoreText = `${monthlyResults.compliantWeeks} / ${monthlyResults.totalWeeks}`;
-  const statusColor = recommendation.isCritical ? styles.critical : undefined;
+  const isCritical = recommendation.isCritical;
 
   return (
     <Dialog open={isOpen} onOpenChange={(_event, data) => !data.open && onDismiss()}>
-      <DialogSurface style={{ maxWidth: '500px' }}>
+      <DialogSurface style={{ maxWidth: '600px' }}>
         <DialogBody>
-          <DialogTitle action={<Button appearance="subtle" onClick={onDismiss} icon={<Comment24Regular />} aria-label="Close" />}>
-            Automated Recommendation
-          </DialogTitle>
-          
-          <Text size={500} weight="semibold">{agentName}'s Monthly Review</Text>
-          <div className={styles.resultGrid}>
-            <Text size={300}>**Compliant Weeks:**</Text>
-            <Text size={300} weight="semibold">{scoreText}</Text>
-            
-            <Text size={300}>**Corrective Actions Logged:**</Text>
-            <Text size={300} weight="semibold">{monthlyResults.actionCount}</Text>
+          <DialogTitle>Performance Recommendation</DialogTitle>
+          <p style={{ marginBottom: '16px', color: tokens.colorNeutralForeground2 }}>
+            Automated recommendation based on monthly performance analysis and action history.
+          </p>
+
+          <div className={styles.root}>
+            {/* Agent Information Section */}
+            <div className={styles.infoSection}>
+              <div className={styles.infoRow}>
+                <Label className={styles.labelWithIcon}>
+                  <Person24Regular />
+                  Employee
+                </Label>
+                <span className={styles.valueText}>{agentName}</span>
+              </div>
+
+              <div className={styles.infoRow}>
+                <Label className={styles.labelWithIcon}>
+                  <CalendarMonth24Regular />
+                  Compliant Weeks
+                </Label>
+                <span className={styles.valueText}>{scoreText}</span>
+              </div>
+
+              <div className={styles.infoRow}>
+                <Label className={styles.labelWithIcon}>
+                  <CommentMultiple24Regular />
+                  Actions Logged
+                </Label>
+                <span className={styles.valueText}>{monthlyResults.actionCount}</span>
+              </div>
+            </div>
+
+            {/* Recommendation Box */}
+            <div className={styles.recommendationBox}>
+              <div className={styles.recommendationTitle}>
+                <Lightbulb24Regular />
+                <span>Suggested Action</span>
+                {isCritical && (
+                  <span
+                    className={styles.statusBadge}
+                    style={{ backgroundColor: tokens.colorPaletteRedBackground3 }}
+                  >
+                    Critical
+                  </span>
+                )}
+              </div>
+
+              <div className={styles.recommendationAction} style={{ color: isCritical ? tokens.colorPaletteRedForeground1 : undefined }}>
+                {recommendation.action}
+              </div>
+
+              {recommendation.notes && (
+                <div className={styles.recommendationNotes}>
+                  <strong>Notes:</strong> {recommendation.notes}
+                </div>
+              )}
+            </div>
           </div>
 
-          <Card className={styles.notesContainer}>
-            <CardHeader 
-              header={<Text size={400} weight="bold">Suggested Action (Case A-E)</Text>}
-              action={recommendation.isCritical ? <Warning24Regular className={statusColor} /> : undefined}
-            />
-            <Text size={500} className={statusColor}>
-              {recommendation.action}
-            </Text>
-            <Text size={300} block style={{ marginTop: tokens.spacingVerticalS }}>
-              Notes: {recommendation.notes}
-            </Text>
-          </Card>
-
-          <DialogActions style={{ marginTop: tokens.spacingVerticalL }}>
+          <DialogActions>
             <Button appearance="secondary" onClick={onDismiss}>Close</Button>
           </DialogActions>
         </DialogBody>
