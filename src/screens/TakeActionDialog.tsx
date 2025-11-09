@@ -414,17 +414,37 @@ export default function TakeActionDialog({
               <Label required className={styles.labelWithIcon}>
                 <Warning24Regular />
                 Action Type
+                {recommendation && actionType && (
+                  <span style={{
+                    marginLeft: '8px',
+                    fontSize: '0.75rem',
+                    color: tokens.colorBrandBackground,
+                    fontWeight: 'normal'
+                  }}>
+                    (Recommended: {actionType})
+                  </span>
+                )}
               </Label>
               <div className={styles.dropdownWrapper}>
                 <Dropdown
                   placeholder="Select action type"
                   value={actionType}
+                  selectedOptions={actionType ? [actionType] : []}
                   onOptionSelect={(_, data) => setActionType(data.optionValue as WarningType)}
                   style={{ width: '100%' }}
                 >
-                  <Option value="Verbal">Verbal Warning</Option>
-                  <Option value="Written">Written Warning</Option>
-                  <Option value="Coaching">Coaching/Reinforcement</Option>
+                  <Option value="Verbal">
+                    Verbal Warning
+                    {recommendation?.recommendation_type?.includes('Verbal') && ' ⭐ Recommended'}
+                  </Option>
+                  <Option value="Written">
+                    Written Warning
+                    {recommendation?.recommendation_type?.includes('Written') && ' ⭐ Recommended'}
+                  </Option>
+                  <Option value="Coaching">
+                    Coaching/Reinforcement
+                    {recommendation?.recommendation_type?.includes('Coaching') && !recommendation?.recommendation_type?.includes('Verbal') && ' ⭐ Recommended'}
+                  </Option>
                 </Dropdown>
               </div>
             </div>
