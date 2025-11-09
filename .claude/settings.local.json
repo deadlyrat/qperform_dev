@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node server.js:*)"
+      "Bash(node server.js:*)",
+      "Bash(cat:*)",
+      "Bash(npm run build:*)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []
